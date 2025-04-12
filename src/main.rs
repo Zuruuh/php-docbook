@@ -5,7 +5,12 @@ use ansi_to_tui::IntoText;
 use bat::PrettyPrinter;
 use color_eyre::Result;
 use crossterm::event::{self, Event};
-use ratatui::{DefaultTerminal, Frame};
+use derive_builder::Builder;
+use libxml::tree::Node;
+use parser::XmlParser;
+use ratatui::{DefaultTerminal, Frame, symbols::line::DOUBLE_HORIZONTAL_DOWN};
+
+mod parser;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -17,23 +22,14 @@ async fn main() -> Result<()> {
 
     let file_content =
         tokio::fs::read("./php-docs-en/reference/array/functions/array-map.xml").await?;
-    let parser = libxml::parser::Parser::default();
-    let doc = parser.parse_string(file_content).unwrap();
 
-    let root = doc.get_root_element().unwrap();
-    println!("Root: {}", root.get_name());
+    let parser = XmlParser::default();
+
+    let function = parser.parse_function(file_content)?;
+    dbg!(function);
 
     Ok(())
 }
-
-struct PhpFunction {
-     return_type: PhpType
-}
-
-enum PhpType {
-    built_in:q
-}
-
 // async fn run(mut terminal: DefaultTerminal) -> Result<()> {
 // Ok(())
 

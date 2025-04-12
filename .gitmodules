@@ -1,6 +1,3 @@
 [submodule "php-docs-en"]
 	path = php-docs-en
 	url = git@github.com:php/doc-en.git
-[submodule "php-docs-base"]
-	path = php-docs-base
-	url = git@github.com:php/doc-base.git
