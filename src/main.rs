@@ -1,7 +1,13 @@
+use ansi_to_tui::IntoText;
+use bat::PrettyPrinter;
 use clap::Parser;
 use color_eyre::Result;
 use fancy_regex::Captures;
 use parser::XmlParser;
+use ratatui::{
+    DefaultTerminal, Frame,
+    crossterm::event::{self, Event},
+};
 
 mod parser;
 
@@ -28,21 +34,12 @@ async fn main() -> Result<()> {
             replace_entities_i_hate_my_life().await?;
         }
         Subcommand::View => {
-            let file_content = tokio::fs::read_to_string(
-                "./.data/doc-en/reference/array/functions/array-reduce.xml",
-            )
-            .await?;
+            let terminal = ratatui::init();
+            let result = run(terminal).await;
 
-            let parser = XmlParser::default();
-
-            let function = parser.parse_function(file_content)?;
-            println!("{function}");
+            ratatui::restore();
         }
     };
-    // let terminal = ratatui::init();
-    // let result = run(terminal).await;
-
-    // ratatui::restore();
     Ok(())
 }
 
@@ -61,43 +58,33 @@ async fn replace_entities_i_hate_my_life() -> std::io::Result<()> {
     Ok(())
 }
 
-#[cfg(test)]
-mod test {
-    use crate::parser::{self, XmlParser};
+async fn run(mut terminal: DefaultTerminal) -> Result<()> {
+    let file_content =
+        tokio::fs::read_to_string("./.data/doc-en/reference/array/functions/array-reduce.xml")
+            .await?;
 
-    #[test]
-    pub fn yeah() {
-        let parser = XmlParser::default();
-        for file in glob::glob("./.data/**/functions/**/*.xml").unwrap() {
-            let file = file.unwrap();
+    let parser = XmlParser::default();
 
-            println!("Parsing file {}", &file.to_string_lossy());
-            let function = parser.parse_function(std::fs::read(file).unwrap());
-            let function = function.unwrap();
-            println!("{function}");
+    let function = parser.parse_function(file_content)?;
+    let mut pretty_xml = String::new();
+    let function = format!("<?php\n{function}");
+    PrettyPrinter::new()
+        .input_from_bytes(function.as_bytes())
+        .language("php")
+        .line_numbers(false)
+        .print_with_writer(Some(&mut pretty_xml))
+        .unwrap();
+    let pretty_xml = pretty_xml.lines().skip(1).collect::<String>();
+    let pretty_xml = pretty_xml.to_text().unwrap();
+
+    loop {
+        terminal.draw(|frame: &mut Frame| {
+            // pretty_xml.print();
+            frame.render_widget(&pretty_xml, frame.area());
+        })?;
+
+        if matches!(event::read()?, Event::Key(_)) {
+            break Ok(());
         }
     }
 }
-
-// async fn run(mut terminal: DefaultTerminal) -> Result<()> {
-// Ok(())
-
-// let mut pretty_xml = String::new();
-// PrettyPrinter::new()
-//     .input_from_bytes(&file_content[..])
-//     .language("xml")
-//     .line_numbers(false)
-//     .print_with_writer(Some(&mut pretty_xml));
-// let pretty_xml = pretty_xml.to_text().unwrap();
-//
-// loop {
-//     terminal.draw(|frame: &mut Frame| {
-//         // pretty_xml.print();
-//         frame.render_widget(&pretty_xml, frame.area());
-//     })?;
-//
-//     if matches!(event::read()?, Event::Key(_)) {
-//         break Ok(());
-//     }
-// }
-// }
