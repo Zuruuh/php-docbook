@@ -20,7 +20,7 @@ pub struct XmlParser {
 }
 
 impl XmlParser {
-    pub fn parse_function(&self, content: Vec<u8>) -> Result<Function, XmlError> {
+    pub fn parse_function<Bytes: AsRef<[u8]>>(&self, content: Bytes) -> Result<Function, XmlError> {
         let doc = self
             .parser
             .parse_string(content)
@@ -31,6 +31,7 @@ impl XmlParser {
         xpath
             .register_namespace("d", "http://docbook.org/ns/docbook")
             .map_err(|_| XmlError::NamespaceRegistrationError)?;
+
         let title = get_string_from_xpath(&xpath, "//d:refentry/d:refnamediv/d:refname")?;
         let description = get_string_from_xpath(&xpath, "//d:refentry/d:refnamediv/d:refpurpose")?;
 
@@ -48,21 +49,24 @@ impl XmlParser {
 
         let method_params = {
             let method_param_nodes = xpath
-            .evaluate(
-                r#"//d:refentry/d:refsect1[@role="description"]/d:methodsynopsis/d:methodparam"#,
-            )
-            .unwrap()
-            .get_nodes_as_vec();
+                .evaluate(
+                    r#"/d:refentry/d:refsect1[@role="description"]/d:methodsynopsis/d:methodparam"#,
+                )
+                .unwrap()
+                .get_nodes_as_vec();
 
             let mut parameters = Vec::<Parameter>::new();
 
             for method in method_param_nodes {
                 let mut r#type = Option::<TypeHint>::None;
                 let mut name = Option::<String>::None;
+                let mut default_value = Option::<String>::None;
+
                 let repeat = method
                     .get_attribute("rep")
                     .map(|value| value.as_str() == "repeat")
                     .unwrap_or_default();
+
                 for child in method.get_child_elements() {
                     match child.get_name().as_str() {
                         "type" => {
@@ -70,6 +74,9 @@ impl XmlParser {
                         }
                         "parameter" => {
                             name = Some(child.get_content());
+                        }
+                        "initializer" => {
+                            default_value = Some(child.get_content());
                         }
                         name => todo!("Unhandled case for <methodparam><{name}>..."),
                     };
@@ -81,6 +88,7 @@ impl XmlParser {
                             name,
                             r#type,
                             repeat,
+                            default_value,
                         });
                     }
                     (r#type, name) => {
@@ -136,18 +144,10 @@ fn parse_type_recursive(node: Node) -> TypeHint {
         } else {
             first_type = Some(type_hint);
         }
-
-        //         }));
-        //     }
-        // };
     }
 
     TypeHint::Union(union_type.unwrap())
 }
-
-// pub struct Page {
-//     content
-// }
 
 #[derive(Debug)]
 pub struct Function {
@@ -191,4 +191,5 @@ pub struct Parameter {
     pub name: String,
     pub r#type: TypeHint,
     pub repeat: bool,
+    pub default_value: Option<String>,
 }

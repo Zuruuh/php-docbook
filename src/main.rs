@@ -21,7 +21,8 @@ async fn main() -> Result<()> {
     ratatui::restore();
 
     let file_content =
-        tokio::fs::read("./php-docs-en/reference/array/functions/array-reduce.xml").await?;
+        tokio::fs::read_to_string("./php-docs-en/reference/array/functions/array-reduce.xml")
+            .await?;
 
     let parser = XmlParser::default();
 
@@ -30,11 +31,14 @@ async fn main() -> Result<()> {
     for (i, arg) in function.arguments.into_iter().enumerate() {
         buf.push_str(
             format!(
-                "{}{} {}${}",
+                "{}{} {}${}{}",
                 (i > 0).then(|| ", ").unwrap_or_default(),
                 arg.r#type,
                 arg.repeat.then(|| "...").unwrap_or_default(),
                 arg.name,
+                arg.default_value
+                    .map(|value| format!(" = {value}"))
+                    .unwrap_or_default(),
             )
             .as_str(),
         );
