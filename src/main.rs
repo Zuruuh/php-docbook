@@ -21,12 +21,26 @@ async fn main() -> Result<()> {
     ratatui::restore();
 
     let file_content =
-        tokio::fs::read("./php-docs-en/reference/array/functions/array-map.xml").await?;
+        tokio::fs::read("./php-docs-en/reference/array/functions/array-reduce.xml").await?;
 
     let parser = XmlParser::default();
 
     let function = parser.parse_function(file_content)?;
-    dbg!(function);
+    let mut buf = format!("{}(", function.name);
+    for (i, arg) in function.arguments.into_iter().enumerate() {
+        buf.push_str(
+            format!(
+                "{}{} {}${}",
+                (i > 0).then(|| ", ").unwrap_or_default(),
+                arg.r#type,
+                arg.repeat.then(|| "...").unwrap_or_default(),
+                arg.name,
+            )
+            .as_str(),
+        );
+    }
+    buf.push_str(format!("): {};", function.return_type).as_str());
+    println!("{buf}");
 
     Ok(())
 }

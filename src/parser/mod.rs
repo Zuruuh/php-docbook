@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use libxml::{parser::XmlParseError, tree::Node};
 
 #[derive(Debug, thiserror::Error)]
@@ -149,16 +151,27 @@ fn parse_type_recursive(node: Node) -> TypeHint {
 
 #[derive(Debug)]
 pub struct Function {
-    name: String,
-    description: String,
-    return_type: TypeHint,
-    arguments: Vec<Parameter>,
+    pub name: String,
+    pub description: String,
+    pub return_type: TypeHint,
+    pub arguments: Vec<Parameter>,
 }
 
 #[derive(Debug, Clone)]
 pub enum TypeHint {
     Regular(String),
     Union(UnionTypeHint),
+}
+
+impl Display for TypeHint {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TypeHint::Regular(regular) => write!(f, "{regular}"),
+            TypeHint::Union(union_type_hint) => {
+                write!(f, "{}|{}", union_type_hint.left, union_type_hint.right)
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -175,7 +188,7 @@ impl Default for TypeHint {
 
 #[derive(Debug, Default)]
 pub struct Parameter {
-    name: String,
-    r#type: TypeHint,
-    repeat: bool,
+    pub name: String,
+    pub r#type: TypeHint,
+    pub repeat: bool,
 }
