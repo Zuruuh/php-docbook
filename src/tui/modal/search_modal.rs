@@ -1,4 +1,5 @@
 use crossterm::event::{KeyCode, KeyEvent};
+use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Margin, Rect},
@@ -96,11 +97,20 @@ impl StatefulWidget for &mut SearchModal {
                 Function::Definition(function_definition) => Some(function_definition),
                 Function::Alias(_) => None,
             })
-            .filter(|function| {
-                self.query
-                    .value()
-                    .split(' ')
-                    .all(|word| function.name.contains(word))
+            .filter_map(|function| {
+                let (_, indices) = state
+                    .fuzzy_matcher
+                    .fuzzy_indices(function.name.as_str(), self.query.value())?;
+
+                Some((
+                    function,
+                    function
+                        .name
+                        .chars()
+                        .enumerate()
+                        .map(|(i, char)| (char, indices.contains(&i)))
+                        .collect::<Vec<_>>(),
+                ))
             })
             .collect::<Vec<_>>();
 
@@ -112,20 +122,36 @@ impl StatefulWidget for &mut SearchModal {
             .iter()
             .enumerate()
             .find(|(i, _)| *i == self.selection_offset)
-            .map(|(_, function)| *function)
+            .map(|(_, function)| function.0)
             .cloned();
 
-        let items = items.into_iter().enumerate().map(|(i, function)| {
-            if i == self.selection_offset {
-                ListItem::new(Line::from(vec![
-                    Span::styled("> ", Style::default().fg(Color::LightRed)),
-                    Span::styled(format!("{}(...)", function.name), Style::default().italic()),
-                ]))
-                .style(Style::default().bg(Color::DarkGray))
-            } else {
-                ListItem::new(format!("  {}(...)", function.name))
-            }
-        });
+        let items = items
+            .into_iter()
+            .enumerate()
+            .map(|(i, (_, function_name))| {
+                let mut chars = Vec::<Span>::new();
+                if i == self.selection_offset {
+                    chars.push(Span::styled("> ", Style::default().fg(Color::LightRed)));
+                }
+
+                for (char, matching) in function_name {
+                    chars.push(Span::styled(
+                        char.to_string(),
+                        matching
+                            .then_some(Style::default().fg(Color::LightRed))
+                            .unwrap_or_default(),
+                    ));
+                }
+
+                chars.push(Span::from("(...)"));
+
+                if i == self.selection_offset {
+                    ListItem::new(Line::from(chars))
+                        .style(Style::new().italic().bg(Color::DarkGray))
+                } else {
+                    ListItem::new(Line::from(chars))
+                }
+            });
 
         let list = List::new(items);
         StatefulWidget::render(list, list_area, buf, &mut ListState::default());

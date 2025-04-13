@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 use color_eyre::Result;
 use crossterm::event::{EventStream, KeyCode, KeyEvent, KeyModifiers};
 use event::EventHandler;
+use fuzzy_matcher::skim::SkimMatcherV2;
 use ratatui::{DefaultTerminal, prelude::*, widgets::Block};
 
 mod event;
@@ -15,7 +16,7 @@ pub(self) use screen::*;
 
 use crate::parser::function::Function;
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct TerminalState {
     event_stream: EventStream,
     running: bool,
@@ -24,10 +25,11 @@ pub struct TerminalState {
     pub shared_state: SharedState,
 }
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct SharedState {
     pub parsed_files_snapshot: BTreeSet<Function>,
     pub total_files_to_parse: usize,
+    pub fuzzy_matcher: SkimMatcherV2,
 }
 
 #[derive(Debug)]
@@ -63,7 +65,7 @@ impl TerminalState {
     fn draw(&mut self, frame: &mut Frame) {
         let area = frame.area();
         let block = Block::bordered().title(
-            Line::from(format!("PHP DocBook {}", env!("CARGO_PKG_VERSION")))
+            Line::from(format!("[PHP DocBook {}]", env!("CARGO_PKG_VERSION")))
                 .bold()
                 .blue()
                 .centered(),
