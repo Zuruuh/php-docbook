@@ -67,9 +67,8 @@ async fn main() -> Result<()> {
         Subcommand::Start => {
             let terminal = ratatui::init();
 
-            let files = glob::glob("./.data/**/functions/**/*.xml")?
-                .into_iter()
-                .collect::<Result<Vec<_>, _>>()?;
+            let files =
+                glob::glob("./.data/**/functions/**/*.xml")?.collect::<Result<Vec<_>, _>>()?;
 
             let mut state = TerminalState::default();
             state.shared_state.total_files_to_parse = files.len();
@@ -101,12 +100,13 @@ async fn main() -> Result<()> {
                 .run(
                     terminal,
                     Box::new(async move |state: &mut TerminalState| {
-                        state.shared_state.parsed_files_snapshot = Arc::clone(&parsed_files)
-                            .lock()
-                            .await
-                            .to_vec()
-                            .into_iter()
-                            .collect();
+                        let parsed_files_mutex = Arc::clone(&parsed_files);
+                        let parsed_files = parsed_files_mutex.lock().await;
+
+                        if parsed_files.len() != state.shared_state.parsed_files_snapshot.len() {
+                            state.shared_state.parsed_files_snapshot =
+                                parsed_files.iter().cloned().collect()
+                        }
                     }),
                 )
                 .await;

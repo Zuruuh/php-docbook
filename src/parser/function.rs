@@ -32,13 +32,17 @@ impl fmt::Display for FunctionDefinition {
             write!(
                 f,
                 "{}{}{} {}${}{}",
-                (i > 0).then(|| ", ").unwrap_or_default(),
-                arg.attributes
-                    .iter()
-                    .map(|attr| format!("{attr} "))
-                    .collect::<String>(),
+                (i > 0).then_some(", ").unwrap_or_default(),
+                {
+                    use std::fmt::Write as _;
+
+                    arg.attributes.iter().fold(String::new(), |mut f, attr| {
+                        let _ = write!(f, "{attr} ");
+                        f
+                    })
+                },
                 arg.r#type,
-                arg.repeat.then(|| "...").unwrap_or_default(),
+                arg.repeat.then_some("...").unwrap_or_default(),
                 arg.name,
                 arg.default_value
                     .as_ref()

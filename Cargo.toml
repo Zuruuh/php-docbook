@@ -36,4 +36,6 @@ tokio = { version = "1.44.2", features = [
   "rt-multi-thread",
   "time",
 ] }
-tui-input = "0.11.1"
+tui-input = { rev = "6198c80de72610c852948bd9b4dbc97687244cea", git = "https://github.com/Zuruuh/tui-input.git", features = [
+  "crossterm",
+] }
