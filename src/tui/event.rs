@@ -2,20 +2,32 @@ use color_eyre::Result;
 use crossterm::event::{Event, KeyEvent, KeyEventKind};
 use futures_util::{FutureExt, StreamExt};
 
-use super::TerminalState;
+use super::{Modal, SearchModalType, TerminalState};
 
 #[derive(Debug)]
 pub(super) enum EventHandlerResult {
     Handled,
+    HandledWithMessage(Message),
     Pass,
 }
 
+#[derive(Debug)]
+pub enum Message {
+    OpenFunctionSearchModal,
+}
+
+impl Message {
+    pub async fn handle(&self, state: &mut TerminalState) {
+        match self {
+            Message::OpenFunctionSearchModal => {
+                state.open_modal = Some(Modal::new_search_modal(SearchModalType::Function));
+            }
+        }
+    }
+}
+
 pub(super) trait EventHandler {
-    async fn on_key_event(
-        &mut self,
-        key: &KeyEvent,
-        state: &mut TerminalState,
-    ) -> EventHandlerResult;
+    async fn on_key_event(&mut self, key: &KeyEvent) -> EventHandlerResult;
 }
 
 pub(super) trait CrosstermEventHandler {

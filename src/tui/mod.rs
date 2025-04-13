@@ -1,6 +1,6 @@
 use color_eyre::Result;
-use crossterm::event::{Event, EventStream, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use futures_util::{FutureExt, StreamExt};
+use crossterm::event::{EventStream, KeyCode, KeyEvent, KeyModifiers};
+use event::EventHandler;
 use ratatui::{DefaultTerminal, prelude::*, widgets::Block};
 
 mod event;
@@ -42,6 +42,7 @@ impl TerminalState {
             self.handle_crossterm_events().await?;
             update_callback(&mut self).await;
         }
+
         Ok(())
     }
 
@@ -61,15 +62,61 @@ impl TerminalState {
             Screen::Home => {
                 screen::HomeScreen.render(container, buf, self);
             }
-        }
+        };
+
+        let modal = match self.open_modal.as_mut() {
+            None => return,
+            Some(modal) => modal,
+        };
+
+        let modal_area = area.inner(Margin::new(3, 0));
+
+        let [_, modal_area, _] = Layout::vertical([
+            Constraint::Ratio(1, 5),
+            Constraint::Ratio(3, 5),
+            Constraint::Ratio(1, 5),
+        ])
+        .split(modal_area)[..] else {
+            unreachable!()
+        };
+
+        modal.render(modal_area, buf);
     }
 
     async fn on_key_event(&mut self, key: KeyEvent) {
+        if let Some(modal) = self.open_modal.as_mut() {
+            match modal.on_key_event(&key).await {
+                EventHandlerResult::Handled => return,
+                EventHandlerResult::HandledWithMessage(message) => {
+                    message.handle(self).await;
+
+                    return;
+                }
+                EventHandlerResult::Pass => {}
+            };
+        }
+        if self.open_modal.is_some() {
+            match &key.code {
+                KeyCode::Esc => {
+                    self.open_modal = None;
+                    return;
+                }
+                _ => {}
+            }
+        }
+
         let result = match self.screen {
-            Screen::Home => screen::HomeScreen.on_key_event(&key, self).await,
+            Screen::Home => HomeScreen.on_key_event(&key).await,
         };
-        if matches!(result, event::EventHandlerResult::Handled) {
-            return;
+        match result {
+            EventHandlerResult::Handled => {
+                return;
+            }
+            EventHandlerResult::HandledWithMessage(message) => {
+                message.handle(self).await;
+                return;
+            }
+            EventHandlerResult::Pass => {}
         }
 
         match (key.modifiers, key.code) {

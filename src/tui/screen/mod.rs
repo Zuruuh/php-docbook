@@ -7,7 +7,6 @@ use ratatui::{
 use super::{
     TerminalState,
     event::{EventHandler, EventHandlerResult},
-    modal::{Modal, SearchModalType},
 };
 
 #[derive(Default, Debug)]
@@ -38,6 +37,7 @@ impl StatefulWidget for HomeScreen {
         else {
             unreachable!()
         };
+
         Paragraph::new(BOOK_ASCII)
             .centered()
             .render(ascii_area, buf);
@@ -58,19 +58,10 @@ impl StatefulWidget for HomeScreen {
 }
 
 impl EventHandler for HomeScreen {
-    async fn on_key_event(
-        &mut self,
-        key: &KeyEvent,
-        state: &mut TerminalState,
-    ) -> EventHandlerResult {
+    async fn on_key_event(&mut self, key: &KeyEvent) -> EventHandlerResult {
         match key.code {
             KeyCode::Char('s') | KeyCode::Char('S') => {
-                state.open_modal = Some(Modal::SearchModal {
-                    r#type: SearchModalType::Function,
-                    query: String::new(),
-                });
-
-                EventHandlerResult::Handled
+                EventHandlerResult::HandledWithMessage(super::Message::OpenFunctionSearchModal)
             }
             _ => EventHandlerResult::Pass,
         }

@@ -65,9 +65,7 @@ impl XmlParser {
                     }
                 })
                 .map(|node| {
-                    node
-                        // .map_err(|_| XmlError::MalformedXmlDefinition("return type"))?
-                        .get_nodes_as_vec()
+                    node.get_nodes_as_vec()
                         .into_iter()
                         .next()
                         .ok_or(XmlError::MalformedXmlDefinition("return type"))
