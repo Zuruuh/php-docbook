@@ -1,24 +1,29 @@
 [package]
-name = "phpdoc"
+name = "php-docbook"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85.1"
+description = "A PHP Documentation viewer for the terminal."
+authors = ["Zuruuh <zuruh.dev@proton.me>"]
+keywords = ["php", "tui"]
 
 [dependencies]
 ansi-to-tui = "7.0.0"
+anstyle = "1.0.10"
 bat = { version = "0.25.0", default-features = false, features = [
   "regex-fancy",
 ] }
 clap = { version = "4.5.35", features = ["derive"] }
 color-eyre = "0.6.3"
-derive_builder = "0.20.2"
+crossterm = { version = "0.29.0", features = ["event-stream"] }
+directories = "6.0.0"
 fancy-regex = "0.14.0"
 futures-util = "0.3.31"
 glob = "0.3.2"
+indoc = "2.0.6"
 libxml = "0.3.3"
-mago-parser = "0.22.2"
-mago-span = "0.22.2"
 ratatui = "0.29.0"
 serde = { version = "1.0.219", features = ["derive"] }
 thiserror = "2.0.12"
-tokio = { version = "1.44.2", features = ["macros", "fs", "rt-multi-thread"] }
+tokio = { version = "1.44.2", features = ["macros", "fs", "rt-multi-thread", "time"] }
+tui-input = "0.11.1"
