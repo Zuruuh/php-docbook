@@ -21,6 +21,8 @@ pub enum Subcommand {
     /// [default] Enter the terminal UI
     #[default]
     Start,
+    /// Test command for development
+    WIP,
 }
 
 pub fn get_styles() -> clap::builder::Styles {
@@ -61,6 +63,24 @@ async fn main() -> Result<()> {
     match cli_args.subcommand.unwrap_or_default() {
         Subcommand::Setup => {
             replace_entities_i_hate_my_life().await?;
+
+            Ok(())
+        }
+        Subcommand::WIP => {
+            let xml_parser = Arc::new(XmlParser::default());
+            let files = glob::glob("./.data/**/functions/**/array-map.xml")?
+                .collect::<Result<Vec<_>, _>>()?;
+            let futures = files
+                .into_iter()
+                .map(async |filepath| -> Result<Function, XmlError> {
+                    let file_content = std::fs::read(filepath).map_err(XmlError::IOError)?;
+                    let result = Arc::clone(&xml_parser).parse_function(file_content)?;
+
+                    Ok(result)
+                })
+                .collect::<Vec<_>>();
+
+            let _ = futures_util::future::join_all(futures).await;
 
             Ok(())
         }

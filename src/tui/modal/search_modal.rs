@@ -178,7 +178,37 @@ impl StatefulWidget for &mut SearchModal {
 
         let preview = Paragraph::new(
             selected_function
-                .map(|function| function.to_string())
+                .clone()
+                .map(|function| {
+                    let description = function
+                        .description
+                        .iter()
+                        .map(|desc_node| desc_node.to_string())
+                        .map(|str| str.trim().to_string())
+                        .collect::<Vec<_>>()
+                        .join(" ");
+
+                    format!("{function}\n\n{description}")
+                })
+                // .map(|code| {
+                //     use ansi_to_tui::IntoText;
+                //
+                //     let code = format!("<?php\n{code}");
+                //     let mut buffer = String::new();
+                //
+                //     let _ = PrettyPrinter::new()
+                //         .language("php")
+                //         .input_from_bytes(code.as_bytes())
+                //         .print_with_writer(Some(&mut buffer));
+                //
+                //     let pretty_code = buffer.lines().skip(1).collect::<String>();
+                //
+                //     IntoText::into_text(&pretty_code).map(|text| text.clone())
+                // })
+                // .transpose()
+                // .ok()
+                // .flatten()
+                // .unwrap_or(Text::from("No preview available")),
                 .unwrap_or("No preview available".to_string()),
         )
         .wrap(Wrap::default())

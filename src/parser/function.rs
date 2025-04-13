@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::r#type::TypeHint;
+use super::r#type::{DescriptionNode, TypeHint};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Function {
@@ -20,9 +20,10 @@ impl fmt::Display for Function {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FunctionDefinition {
     pub name: String,
-    pub description: String,
+    pub short_description: String,
     pub return_type: TypeHint,
     pub arguments: Vec<Parameter>,
+    pub description: Vec<DescriptionNode>,
 }
 
 impl fmt::Display for FunctionDefinition {

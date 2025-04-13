@@ -1,6 +1,6 @@
 use function::{Function, FunctionDefinition};
-use libxml::parser::XmlParseError;
-use r#type::TypeHint;
+use libxml::{parser::XmlParseError, tree::NodeType};
+use r#type::{DescriptionNode, TypeHint};
 
 pub mod function;
 pub mod r#type;
@@ -50,7 +50,7 @@ impl XmlParser {
             .map_err(|_| XmlError::NamespaceRegistrationError)?;
 
         let title = Self::get_string_from_xpath(&xpath, "//d:refentry/d:refnamediv/d:refname")?;
-        let description =
+        let short_description =
             Self::get_string_from_xpath(&xpath, "//d:refentry/d:refnamediv/d:refpurpose")?;
 
         let return_type = {
@@ -77,7 +77,7 @@ impl XmlParser {
         let return_type = match return_type {
             Some(return_type) => return_type,
             None => {
-                return Ok(Function::Alias(description));
+                return Ok(Function::Alias(short_description));
             }
         };
 
@@ -144,11 +144,94 @@ impl XmlParser {
             parameters
         };
 
+        let description = {
+            let description_node = xpath
+                .evaluate(r#"/d:refentry/d:refsect1[@role="description"]/d:para"#)
+                .map(|node| node.get_nodes_as_vec().into_iter().next())
+                .unwrap_or_default()
+                .or_else(|| {
+                    xpath
+                        .evaluate(r#"/d:refentry/d:refsect1[@role="description"]/d:simpara"#)
+                        .map(|node| node.get_nodes_as_vec().into_iter().next())
+                        .unwrap_or_default()
+                });
+
+            let mut description = Vec::<DescriptionNode>::new();
+
+            for node in description_node
+                .map(|node| node.get_child_nodes())
+                .unwrap_or_default()
+            {
+                let content = node.get_content();
+                let text_node = match node.get_name().as_str() {
+                    "text" => DescriptionNode::Text(content),
+                    "function" => DescriptionNode::Function(content),
+                    "constant" => DescriptionNode::Constant(content),
+                    "parameter" | "varname" => DescriptionNode::Parameter(content),
+                    "classname" => DescriptionNode::Classname(content),
+                    "interfacename" => DescriptionNode::InterfaceName(content),
+                    "literal" => DescriptionNode::Literal(content),
+                    "filename" => DescriptionNode::Filename(content),
+                    "type" => DescriptionNode::Type(TypeHint::from(node)),
+                    "programlisting" => DescriptionNode::Code(content),
+                    "link" => DescriptionNode::Link(content),
+                    "methodname" => DescriptionNode::MethodName(content),
+                    "table" => DescriptionNode::Table(content),
+                    "xref" => DescriptionNode::Xref(node.get_attribute("linkend").unwrap_or_default()),
+                    "return.falseforfailure" => DescriptionNode::Text("false on failure".to_string()),
+                    // wtf ?
+                    "return.success" => {
+                        DescriptionNode::Text("Returns true on success or false on failure".to_string())
+                    }
+                    "emphasis"
+                        if node
+                            .get_attribute("role")
+                            .map(|role| &role == "bold")
+                            .unwrap_or_default() =>
+                    {
+                        DescriptionNode::BoldText(content)
+                    }
+                    "command" => DescriptionNode::BoldText(content),
+                    "emphasis" if node.get_attribute("role").is_none() => {
+                        DescriptionNode::ItalicText(content)
+                    }
+                    // TODO: implement this (html equivalent of <ul>, with <li> being <listitem>)
+                    "itemizedlist" | "simplelist" => DescriptionNode::Text(content),
+                    // TODO: actually implement this (Like show full text on hover ?)
+                    "acronym" | "abbrev" => DescriptionNode::Text(content),
+                    "style.oop" | "style.procedural" => DescriptionNode::Subtitle(content),
+                    "note" => DescriptionNode::Note(content),
+                    "screen" => DescriptionNode::Inset(content),
+                    "tag" => DescriptionNode::HtmlTag(content),
+                    "php.ini" => DescriptionNode::InlineCode("php.ini".to_string()),
+                    "code" | "userinput" => DescriptionNode::InlinePhpCode(content),
+                    "quote" => DescriptionNode::ItalicText(format!(r#""{content}""#)),
+                    "superscript" => DescriptionNode::ItalicText(format!("^{content}")),
+                    // TODO: Find a solution one day maybe ? No clue if possible though
+                    "subscript" => DescriptionNode::ItalicText(format!("⋁{content}")),
+                    "warn.undocumented.func" => DescriptionNode::Warning(
+                        "This function is currently not documented; only its argument list is available.".to_string()
+                    ),
+                    // TODO: Handle correctly :pray:
+                    // Example at doc-en/reference/stream/functions/stream-context-set-option.xml
+                    "methodsynopsis" => DescriptionNode::None,
+                    _ if node.get_type() == Some(NodeType::EntityRefNode) => {DescriptionNode::None},
+
+                    name => todo!("Unhandled text node {name}"),
+                };
+
+                description.push(text_node);
+            }
+
+            description
+        };
+
         Ok(Function::Definition(FunctionDefinition {
             name: title,
-            description,
+            short_description,
             return_type,
             arguments: function_params,
+            description,
         }))
     }
 }

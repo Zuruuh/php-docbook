@@ -1,5 +1,6 @@
 use std::fmt;
 
+use derive_more::Display;
 use libxml::tree::Node;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -64,4 +65,35 @@ impl From<Node> for TypeHint {
 
         TypeHint::Union(union_type.unwrap())
     }
+}
+
+/// TODO: Intern some strings here (constants mostly)
+#[derive(Display, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum DescriptionNode {
+    Text(String),
+    BoldText(String),
+    ItalicText(String),
+    Subtitle(String),
+    Function(String),
+    Constant(String),
+    Parameter(String),
+    Classname(String),
+    InterfaceName(String),
+    Literal(String),
+    Filename(String),
+    Type(TypeHint),
+    Code(String),
+    Link(String),
+    Note(String),
+    Inset(String),
+    HtmlTag(String),
+    InlineCode(String),
+    InlinePhpCode(String),
+    /// Countable::count
+    MethodName(String),
+    /// TODO: actually implement this
+    Table(String),
+    Xref(String),
+    Warning(String),
+    None,
 }
