@@ -5,7 +5,10 @@ use ratatui::{
     layout::{Constraint, Layout, Margin, Rect},
     style::{Color, Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, List, ListItem, ListState, Padding, Paragraph, StatefulWidget, Widget, Wrap},
+    widgets::{
+        Block, List, ListItem, ListState, Padding, Paragraph, Scrollbar, ScrollbarOrientation,
+        ScrollbarState, StatefulWidget, Widget, Wrap,
+    },
 };
 use tui_input::Input;
 
@@ -20,7 +23,8 @@ use super::Modal;
 pub struct SearchModal {
     r#type: SearchModalType,
     query: Input,
-    selection_offset: usize,
+    list_state: ListState,
+    vertical_scroll_state: ScrollbarState,
 }
 
 impl SearchModal {
@@ -28,7 +32,8 @@ impl SearchModal {
         Modal::SearchModal(Self {
             r#type,
             query: Input::default(),
-            selection_offset: 0,
+            list_state: ListState::default(),
+            vertical_scroll_state: ScrollbarState::default(),
         })
     }
 
@@ -46,15 +51,26 @@ impl EventHandler for SearchModal {
     async fn on_key_event(&mut self, key: &KeyEvent) -> EventHandlerResult {
         match key.code {
             KeyCode::Down => {
-                self.selection_offset += 1;
+                self.vertical_scroll_state.next();
+                self.list_state.select_next();
 
                 return EventHandlerResult::Handled;
             }
             KeyCode::Up => {
-                if self.selection_offset > 0 {
-                    self.selection_offset -= 1;
-                }
+                self.vertical_scroll_state.prev();
+                self.list_state.select_previous();
+
                 return EventHandlerResult::Handled;
+            }
+            KeyCode::Home => {
+                self.vertical_scroll_state.first();
+                self.list_state.select_first();
+
+                return EventHandlerResult::Handled;
+            }
+            KeyCode::End => {
+                self.vertical_scroll_state.last();
+                self.list_state.select_last();
             }
             _ => {}
         };
@@ -114,23 +130,27 @@ impl StatefulWidget for &mut SearchModal {
             })
             .collect::<Vec<_>>();
 
-        if self.selection_offset >= items.len() {
-            self.selection_offset = items.len().checked_sub(1).unwrap_or_default()
-        }
-
         let selected_function = items
             .iter()
             .enumerate()
-            .find(|(i, _)| *i == self.selection_offset)
+            .find(|(i, _)| Some(*i) == self.list_state.selected())
             .map(|(_, function)| function.0)
             .cloned();
+
+        let items_count = items.len();
 
         let items = items
             .into_iter()
             .enumerate()
             .map(|(i, (_, function_name))| {
                 let mut chars = Vec::<Span>::new();
-                if i == self.selection_offset {
+                // .find(|(i, _)| Some(*i) == self.list_state.selected())
+                let is_selected = self
+                    .list_state
+                    .selected()
+                    .map(|selected| selected == i)
+                    .unwrap_or_default();
+                if is_selected {
                     chars.push(Span::styled("> ", Style::default().fg(Color::LightRed)));
                 }
 
@@ -143,9 +163,7 @@ impl StatefulWidget for &mut SearchModal {
                     ));
                 }
 
-                chars.push(Span::from("(...)"));
-
-                if i == self.selection_offset {
+                if is_selected {
                     ListItem::new(Line::from(chars))
                         .style(Style::new().italic().bg(Color::DarkGray))
                 } else {
@@ -153,8 +171,12 @@ impl StatefulWidget for &mut SearchModal {
                 }
             });
 
-        let list = List::new(items);
-        StatefulWidget::render(list, list_area, buf, &mut ListState::default());
+        let list = List::new(items).scroll_padding(2);
+        StatefulWidget::render(list, list_area, buf, &mut self.list_state);
+
+        self.vertical_scroll_state = self.vertical_scroll_state.content_length(items_count);
+        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight);
+        scrollbar.render(list_area, buf, &mut self.vertical_scroll_state);
 
         let preview = Paragraph::new(
             selected_function
