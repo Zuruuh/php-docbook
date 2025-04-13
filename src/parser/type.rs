@@ -2,7 +2,7 @@ use std::fmt;
 
 use libxml::tree::Node;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TypeHint {
     Regular(String),
     Union(UnionTypeHint),
@@ -19,7 +19,7 @@ impl fmt::Display for TypeHint {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct UnionTypeHint {
     left: Box<TypeHint>,
     right: Box<TypeHint>,

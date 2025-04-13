@@ -1,12 +1,14 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
-    layout::Alignment,
+    layout::{Alignment, Margin},
     prelude::{Buffer, Rect},
-    widgets::{Block, Clear, Widget, block::Position},
+    widgets::{Block, Clear, StatefulWidget, Widget, block::Position},
 };
 use tui_input::Input;
 
-use super::{EventHandler, EventHandlerResult, Message};
+use super::{EventHandler, EventHandlerResult, Message, SharedState};
+
+mod search_modal;
 
 #[derive(Debug)]
 pub(super) enum Modal {
@@ -24,29 +26,33 @@ impl Modal {
         }
     }
 
-    fn render_search_modal(
-        r#type: &mut SearchModalType,
-        input: &mut Input,
-        area: Rect,
-        buf: &mut Buffer,
-    ) {
+    pub fn title(&self) -> &'static str {
+        match self {
+            Modal::SearchModal { .. } => "Search functions",
+        }
+    }
+}
+
+impl StatefulWidget for &mut Modal {
+    type State = SharedState;
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut SharedState) {
         let container = Block::bordered()
             .title_position(Position::Top)
             .title_alignment(Alignment::Left)
-            .title("Search functions");
+            .title(self.title());
 
         let container_area = container.inner(area);
         Clear::default().render(container_area, buf);
         container.render(area, buf);
-    }
-}
 
-impl Widget for &mut Modal {
-    fn render(self, area: Rect, buf: &mut Buffer) {
         match self {
-            Modal::SearchModal { r#type, query } => {
-                Modal::render_search_modal(r#type, query, area, buf)
-            }
+            Modal::SearchModal { r#type, query } => search_modal::render_search_modal(
+                r#type,
+                query,
+                container_area.inner(Margin::new(1, 0)),
+                buf,
+                state,
+            ),
         }
     }
 }

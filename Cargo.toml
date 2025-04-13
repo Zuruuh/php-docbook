@@ -6,6 +6,7 @@ rust-version = "1.85.1"
 description = "A PHP Documentation viewer for the terminal."
 authors = ["Zuruuh <zuruh.dev@proton.me>"]
 keywords = ["php", "tui"]
+repository = "https://github.com/Zuruuh/php-docbook"
 
 [dependencies]
 ansi-to-tui = "7.0.0"

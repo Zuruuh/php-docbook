@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use color_eyre::Result;
 use crossterm::event::{EventStream, KeyCode, KeyEvent, KeyModifiers};
 use event::EventHandler;
@@ -11,20 +13,32 @@ pub(self) use event::*;
 pub(self) use modal::*;
 pub(self) use screen::*;
 
+use crate::parser::function::Function;
+
 #[derive(Default, Debug)]
 pub struct TerminalState {
     event_stream: EventStream,
-    pub parsed_files: usize,
-    pub total_files_to_parse: usize,
     running: bool,
     screen: Screen,
     open_modal: Option<modal::Modal>,
+    pub shared_state: SharedState,
 }
 
 #[derive(Default, Debug)]
+pub struct SharedState {
+    pub parsed_files_snapshot: BTreeSet<Function>,
+    pub total_files_to_parse: usize,
+}
+
+#[derive(Debug)]
 enum Screen {
-    #[default]
-    Home,
+    Home(HomeScreen),
+}
+
+impl Default for Screen {
+    fn default() -> Self {
+        Self::Home(HomeScreen)
+    }
 }
 
 impl TerminalState {
@@ -58,10 +72,8 @@ impl TerminalState {
         let buf = frame.buffer_mut();
         block.render(area, buf);
 
-        match self.screen {
-            Screen::Home => {
-                screen::HomeScreen.render(container, buf, self);
-            }
+        match &mut self.screen {
+            Screen::Home(screen) => screen.render(container, buf, &mut self.shared_state),
         };
 
         let modal = match self.open_modal.as_mut() {
@@ -80,7 +92,7 @@ impl TerminalState {
             unreachable!()
         };
 
-        modal.render(modal_area, buf);
+        modal.render(modal_area, buf, &mut self.shared_state);
     }
 
     async fn on_key_event(&mut self, key: KeyEvent) {
@@ -105,8 +117,8 @@ impl TerminalState {
             }
         }
 
-        let result = match self.screen {
-            Screen::Home => HomeScreen.on_key_event(&key).await,
+        let result = match &mut self.screen {
+            Screen::Home(screen) => screen.on_key_event(&key).await,
         };
         match result {
             EventHandlerResult::Handled => {
@@ -120,7 +132,7 @@ impl TerminalState {
         }
 
         match (key.modifiers, key.code) {
-            (_, KeyCode::Esc | KeyCode::Char('q'))
+            (_, KeyCode::Esc)
             | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => {
                 self.running = false
             }

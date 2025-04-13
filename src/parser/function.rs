@@ -2,7 +2,7 @@ use std::fmt;
 
 use super::r#type::TypeHint;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Function {
     Definition(FunctionDefinition),
     Alias(String),
@@ -17,7 +17,7 @@ impl fmt::Display for Function {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FunctionDefinition {
     pub name: String,
     pub description: String,
@@ -51,7 +51,7 @@ impl fmt::Display for FunctionDefinition {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Parameter {
     pub name: String,
     pub r#type: TypeHint,

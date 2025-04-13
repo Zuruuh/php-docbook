@@ -72,7 +72,7 @@ async fn main() -> Result<()> {
                 .collect::<Result<Vec<_>, _>>()?;
 
             let mut state = TerminalState::default();
-            state.total_files_to_parse = files.len();
+            state.shared_state.total_files_to_parse = files.len();
 
             let parsed_files = Arc::new(Mutex::new(Vec::<Function>::new()));
             let xml_parser = Arc::new(XmlParser::default());
@@ -101,7 +101,12 @@ async fn main() -> Result<()> {
                 .run(
                     terminal,
                     Box::new(async move |state: &mut TerminalState| {
-                        state.parsed_files = Arc::clone(&parsed_files).lock().await.len();
+                        state.shared_state.parsed_files_snapshot = Arc::clone(&parsed_files)
+                            .lock()
+                            .await
+                            .to_vec()
+                            .into_iter()
+                            .collect();
                     }),
                 )
                 .await;

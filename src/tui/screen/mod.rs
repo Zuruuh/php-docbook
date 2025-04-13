@@ -5,9 +5,20 @@ use ratatui::{
 };
 
 use super::{
-    TerminalState,
+    SharedState,
     event::{EventHandler, EventHandlerResult},
 };
+
+#[derive(Debug)]
+pub(super) enum Screen {
+    Home(HomeScreen),
+}
+
+impl Default for Screen {
+    fn default() -> Self {
+        Self::Home(HomeScreen)
+    }
+}
 
 #[derive(Default, Debug)]
 pub struct HomeScreen;
@@ -23,8 +34,8 @@ const BOOK_ASCII: &str = indoc::indoc! {r#"
 \===================\\|//=================/
 "#};
 
-impl StatefulWidget for HomeScreen {
-    type State = TerminalState;
+impl StatefulWidget for &mut HomeScreen {
+    type State = SharedState;
 
     fn render(
         self,
@@ -44,12 +55,12 @@ impl StatefulWidget for HomeScreen {
 
         Paragraph::new(format!(
             "{} {}/{} definition files",
-            if state.parsed_files == state.total_files_to_parse {
+            if state.parsed_files_snapshot.len() == state.total_files_to_parse {
                 "Parsed"
             } else {
                 "Parsing"
             },
-            state.parsed_files,
+            state.parsed_files_snapshot.len(),
             state.total_files_to_parse
         ))
         .centered()
