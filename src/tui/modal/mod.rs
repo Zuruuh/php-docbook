@@ -45,13 +45,9 @@ impl StatefulWidget for &mut Modal {
 
 impl EventHandler for Modal {
     async fn on_key_event(&mut self, key: &KeyEvent) -> EventHandlerResult {
-        let result = match self {
+        match self {
             Modal::SearchModal(modal) => modal.on_key_event(key),
         }
-        .await;
-
-        // if !matches!(result, EventHandlerResult::Pass) {
-        return result;
-        // }
+        .await
     }
 }

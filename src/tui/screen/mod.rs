@@ -6,7 +6,7 @@ use ratatui::{
 
 use super::{
     SharedState,
-    event::{EventHandler, EventHandlerResult},
+    event::{EventHandler, EventHandlerResult, Message},
 };
 
 #[derive(Debug)]
@@ -72,7 +72,7 @@ impl EventHandler for HomeScreen {
     async fn on_key_event(&mut self, key: &KeyEvent) -> EventHandlerResult {
         match key.code {
             KeyCode::Char('s') | KeyCode::Char('S') => {
-                EventHandlerResult::HandledWithMessage(super::Message::OpenFunctionSearchModal)
+                EventHandlerResult::HandledWithMessage(Message::OpenFunctionSearchModal)
             }
             _ => EventHandlerResult::Pass,
         }

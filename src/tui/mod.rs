@@ -2,17 +2,14 @@ use std::collections::BTreeSet;
 
 use color_eyre::Result;
 use crossterm::event::{EventStream, KeyCode, KeyEvent, KeyModifiers};
-use event::EventHandler;
+use event::{CrosstermEventHandler, EventHandler, EventHandlerResult};
 use fuzzy_matcher::skim::SkimMatcherV2;
 use ratatui::{DefaultTerminal, prelude::*, widgets::Block};
+use screen::HomeScreen;
 
-mod event;
-mod modal;
-mod screen;
-
-pub(self) use event::*;
-pub(self) use modal::*;
-pub(self) use screen::*;
+pub mod event;
+pub mod modal;
+pub mod screen;
 
 use crate::parser::function::Function;
 
@@ -109,14 +106,9 @@ impl TerminalState {
                 EventHandlerResult::Pass => {}
             };
         }
-        if self.open_modal.is_some() {
-            match &key.code {
-                KeyCode::Esc => {
-                    self.open_modal = None;
-                    return;
-                }
-                _ => {}
-            }
+        if self.open_modal.is_some() && key.code == KeyCode::Esc {
+            self.open_modal = None;
+            return;
         }
 
         let result = match &mut self.screen {

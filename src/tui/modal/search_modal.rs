@@ -1,5 +1,5 @@
 use crossterm::event::{KeyCode, KeyEvent};
-use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
+use fuzzy_matcher::FuzzyMatcher;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Margin, Rect},
@@ -28,6 +28,7 @@ pub struct SearchModal {
 }
 
 impl SearchModal {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(r#type: SearchModalType) -> Modal {
         Modal::SearchModal(Self {
             r#type,
@@ -76,10 +77,7 @@ impl EventHandler for SearchModal {
         };
 
         use tui_input::backend::crossterm::EventHandler as _;
-        match self
-            .query
-            .handle_event(&crossterm::event::Event::Key(key.clone()))
-        {
+        match self.query.handle_event(&crossterm::event::Event::Key(*key)) {
             Some(_) => EventHandlerResult::Handled,
             None => EventHandlerResult::Pass,
         }
