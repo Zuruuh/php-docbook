@@ -1,5 +1,6 @@
-use libxml::tree::Node;
 use std::fmt;
+
+use libxml::tree::Node;
 
 #[derive(Debug, Clone)]
 pub enum TypeHint {

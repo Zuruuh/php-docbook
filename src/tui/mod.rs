@@ -1,26 +1,24 @@
-use crate::parser::XmlParser;
-use ansi_to_tui::IntoText;
-use bat::PrettyPrinter;
 use color_eyre::Result;
 use crossterm::event::{Event, EventStream, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use futures_util::{FutureExt, StreamExt};
-use ratatui::{
-    DefaultTerminal,
-    crossterm::event,
-    prelude::*,
-    widgets::{Block, Padding, Paragraph, block::Position},
-};
-use screen::HomeScreen;
-use std::io;
-use text::ToLine;
+use ratatui::{DefaultTerminal, prelude::*, widgets::Block};
 
+mod event;
+mod modal;
 mod screen;
+
+pub(self) use event::*;
+pub(self) use modal::*;
+pub(self) use screen::*;
 
 #[derive(Default, Debug)]
 pub struct TerminalState {
     event_stream: EventStream,
+    pub parsed_files: usize,
+    pub total_files_to_parse: usize,
     running: bool,
     screen: Screen,
+    open_modal: Option<modal::Modal>,
 }
 
 #[derive(Default, Debug)]
@@ -30,20 +28,23 @@ enum Screen {
 }
 
 impl TerminalState {
-    pub async fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
+    pub async fn run<Callback>(
+        mut self,
+        mut terminal: DefaultTerminal,
+        mut update_callback: Callback,
+    ) -> Result<()>
+    where
+        Callback: AsyncFnMut(&mut TerminalState),
+    {
         self.running = true;
         while self.running {
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_crossterm_events().await?;
+            update_callback(&mut self).await;
         }
         Ok(())
     }
 
-    /// Renders the user interface.
-    ///
-    /// This is where you add new widgets. See the following resources for more information:
-    /// - <https://docs.rs/ratatui/latest/ratatui/widgets/index.html>
-    /// - <https://github.com/ratatui/ratatui/tree/master/examples>
     fn draw(&mut self, frame: &mut Frame) {
         let area = frame.area();
         let block = Block::bordered().title(
@@ -58,48 +59,25 @@ impl TerminalState {
 
         match self.screen {
             Screen::Home => {
-                HomeScreen.render(container, buf);
+                screen::HomeScreen.render(container, buf, self);
             }
         }
     }
 
-    /// Reads the crossterm events and updates the state of [`App`].
-    async fn handle_crossterm_events(&mut self) -> Result<()> {
-        tokio::select! {
-            event = self.event_stream.next().fuse() => {
-                match event {
-                    Some(Ok(evt)) => {
-                        match evt {
-                            Event::Key(key)
-                                if key.kind == KeyEventKind::Press
-                                    => self.on_key_event(key),
-                            Event::Mouse(_) => {}
-                            Event::Resize(_, _) => {}
-                            _ => {}
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            _ = tokio::time::sleep(tokio::time::Duration::from_millis(100)) => {
-                // Sleep for a short duration to avoid busy waiting.
-            }
+    async fn on_key_event(&mut self, key: KeyEvent) {
+        let result = match self.screen {
+            Screen::Home => screen::HomeScreen.on_key_event(&key, self).await,
+        };
+        if matches!(result, event::EventHandlerResult::Handled) {
+            return;
         }
-        Ok(())
-    }
 
-    /// Handles the key events and updates the state of [`App`].
-    fn on_key_event(&mut self, key: KeyEvent) {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q'))
-            | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => self.quit(),
-            // Add other key handlers here.
+            | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => {
+                self.running = false
+            }
             _ => {}
         }
-    }
-
-    /// Set running to false to quit the application.
-    fn quit(&mut self) {
-        self.running = false;
     }
 }

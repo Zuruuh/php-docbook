@@ -1,5 +1,6 @@
-use super::r#type::TypeHint;
 use std::fmt;
+
+use super::r#type::TypeHint;
 
 #[derive(Debug)]
 pub enum Function {

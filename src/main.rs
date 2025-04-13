@@ -1,7 +1,14 @@
-use crate::cli::replace_entities_i_hate_my_life;
+use std::sync::Arc;
+
 use clap::Parser;
 use color_eyre::Result;
-use tui::TerminalState;
+use futures_util::lock::Mutex;
+
+use self::{
+    cli::replace_entities_i_hate_my_life,
+    parser::{XmlError, XmlParser, function::Function},
+    tui::TerminalState,
+};
 
 mod cli;
 mod parser;
@@ -59,8 +66,45 @@ async fn main() -> Result<()> {
         }
         Subcommand::Start => {
             let terminal = ratatui::init();
-            let state = TerminalState::default();
-            let result = state.run(terminal).await;
+
+            let files = glob::glob("./.data/**/functions/**/*.xml")?
+                .into_iter()
+                .collect::<Result<Vec<_>, _>>()?;
+
+            let mut state = TerminalState::default();
+            state.total_files_to_parse = files.len();
+
+            let parsed_files = Arc::new(Mutex::new(Vec::<Function>::new()));
+            let xml_parser = Arc::new(XmlParser::default());
+            let parsed_files_arc_for_tokio_task = Arc::clone(&parsed_files);
+
+            tokio::spawn(async move {
+                let futures = files
+                    .into_iter()
+                    .map(async |filepath| -> Result<(), XmlError> {
+                        let file_content = std::fs::read(filepath).map_err(XmlError::IOError)?;
+                        let result = Arc::clone(&xml_parser).parse_function(file_content)?;
+
+                        Arc::clone(&parsed_files_arc_for_tokio_task)
+                            .lock()
+                            .await
+                            .push(result);
+
+                        Ok(())
+                    })
+                    .collect::<Vec<_>>();
+
+                futures_util::future::join_all(futures).await;
+            });
+
+            let result = state
+                .run(
+                    terminal,
+                    Box::new(async move |state: &mut TerminalState| {
+                        state.parsed_files = Arc::clone(&parsed_files).lock().await.len();
+                    }),
+                )
+                .await;
 
             ratatui::restore();
 

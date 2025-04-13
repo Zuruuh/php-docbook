@@ -2,8 +2,8 @@ use function::{Function, FunctionDefinition};
 use libxml::parser::XmlParseError;
 use r#type::TypeHint;
 
-mod function;
-mod r#type;
+pub mod function;
+pub mod r#type;
 
 #[derive(Debug, thiserror::Error)]
 pub enum XmlError {
@@ -17,6 +17,8 @@ pub enum XmlError {
     XPathEvaluationError,
     #[error("Could not find the xml representation of the {0}")]
     MalformedXmlDefinition(&'static str),
+    #[error("Could not read the xml file")]
+    IOError(std::io::Error),
 }
 
 #[derive(Default)]
