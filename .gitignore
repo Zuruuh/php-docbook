@@ -1,3 +1,6 @@
 /target
 /.data
+!/.data/.gitkeep
 /.config
+!/.config/.gitkeep
+/docbook.log

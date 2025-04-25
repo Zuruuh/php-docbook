@@ -27,6 +27,7 @@
           pkg-config
           libiconvReal
           libxml2
+          cargo-insta
         ];
       };
     });

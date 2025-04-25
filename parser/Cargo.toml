@@ -1,0 +1,23 @@
+[package]
+name = "php-docbook-parser"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85.1"
+description = "PHP Documentation source file parser."
+authors = ["Zuruuh <zuruh.dev@proton.me>"]
+keywords = ["php", "xml"]
+repository = "https://github.com/Zuruuh/php-docbook"
+
+[dependencies]
+derive_more = { version = "2.0.1", features = ["display"] }
+glob = "0.3.2"
+libxml = "0.3.3"
+serde = { version = "1.0.219", features = ["derive"] }
+thiserror = "2.0.12"
+tokio = { version = "1.44.2", features = ["fs"] }
+tracing = "0.1.41"
+
+[dev-dependencies]
+insta = "1.42.2"
+rstest = "0.25.0"
+tokio = { version = "1.44.2", features = ["test-util", "fs", "macros"] }

@@ -1,8 +1,10 @@
 use std::fmt;
 
-use super::r#type::{DescriptionNode, TypeHint};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+use super::{text::TextNode, r#type::TypeHint};
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Function {
     Definition(FunctionDefinition),
     Alias(String),
@@ -17,13 +19,13 @@ impl fmt::Display for Function {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct FunctionDefinition {
     pub name: String,
     pub short_description: String,
     pub return_type: TypeHint,
     pub arguments: Vec<Parameter>,
-    pub description: Vec<DescriptionNode>,
+    pub description: Vec<TextNode>,
 }
 
 impl fmt::Display for FunctionDefinition {
@@ -56,7 +58,7 @@ impl fmt::Display for FunctionDefinition {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Parameter {
     pub name: String,
     pub r#type: TypeHint,

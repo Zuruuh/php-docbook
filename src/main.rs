@@ -4,14 +4,11 @@ use clap::Parser;
 use color_eyre::Result;
 use futures_util::lock::Mutex;
 
-use self::{
-    cli::replace_entities_i_hate_my_life,
-    parser::{XmlError, XmlParser, function::Function},
-    tui::TerminalState,
-};
+use self::{cli::replace_entities_i_hate_my_life, tui::TerminalState};
+
+use php_docbook_parser::{XmlError, XmlParser, function::Function};
 
 mod cli;
-mod parser;
 mod tui;
 
 #[derive(Default, clap::Subcommand)]

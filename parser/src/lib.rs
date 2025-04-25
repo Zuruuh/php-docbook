@@ -1,8 +1,10 @@
 use function::{Function, FunctionDefinition};
 use libxml::{parser::XmlParseError, tree::NodeType};
-use r#type::{DescriptionNode, TypeHint};
+use text::TextNode;
+use r#type::TypeHint;
 
 pub mod function;
+pub mod text;
 pub mod r#type;
 
 #[derive(Debug, thiserror::Error)]
@@ -156,7 +158,7 @@ impl XmlParser {
                         .unwrap_or_default()
                 });
 
-            let mut description = Vec::<DescriptionNode>::new();
+            let mut description = Vec::<TextNode>::new();
 
             for node in description_node
                 .map(|node| node.get_child_nodes())
@@ -164,24 +166,24 @@ impl XmlParser {
             {
                 let content = node.get_content();
                 let text_node = match node.get_name().as_str() {
-                    "text" => DescriptionNode::Text(content),
-                    "function" => DescriptionNode::Function(content),
-                    "constant" => DescriptionNode::Constant(content),
-                    "parameter" | "varname" => DescriptionNode::Parameter(content),
-                    "classname" => DescriptionNode::Classname(content),
-                    "interfacename" => DescriptionNode::InterfaceName(content),
-                    "literal" => DescriptionNode::Literal(content),
-                    "filename" => DescriptionNode::Filename(content),
-                    "type" => DescriptionNode::Type(TypeHint::from(node)),
-                    "programlisting" => DescriptionNode::Code(content),
-                    "link" => DescriptionNode::Link(content),
-                    "methodname" => DescriptionNode::MethodName(content),
-                    "table" => DescriptionNode::Table(content),
-                    "xref" => DescriptionNode::Xref(node.get_attribute("linkend").unwrap_or_default()),
-                    "return.falseforfailure" => DescriptionNode::Text("false on failure".to_string()),
+                    "text" => TextNode::Text(content),
+                    "function" => TextNode::Function(content),
+                    "constant" => TextNode::Constant(content),
+                    "parameter" | "varname" => TextNode::Parameter(content),
+                    "classname" => TextNode::Classname(content),
+                    "interfacename" => TextNode::InterfaceName(content),
+                    "literal" => TextNode::Literal(content),
+                    "filename" => TextNode::Filename(content),
+                    "type" => TextNode::Type(TypeHint::from(node)),
+                    "programlisting" => TextNode::Code(content),
+                    "link" => TextNode::Link(content),
+                    "methodname" => TextNode::MethodName(content),
+                    "table" => TextNode::Table(content),
+                    "xref" => TextNode::Xref(node.get_attribute("linkend").unwrap_or_default()),
+                    "return.falseforfailure" => TextNode::Text("false on failure".to_string()),
                     // wtf ?
                     "return.success" => {
-                        DescriptionNode::Text("Returns true on success or false on failure".to_string())
+                        TextNode::Text("Returns true on success or false on failure".to_string())
                     }
                     "emphasis"
                         if node
@@ -189,33 +191,33 @@ impl XmlParser {
                             .map(|role| &role == "bold")
                             .unwrap_or_default() =>
                     {
-                        DescriptionNode::BoldText(content)
+                        TextNode::BoldText(content)
                     }
-                    "command" => DescriptionNode::BoldText(content),
+                    "command" => TextNode::BoldText(content),
                     "emphasis" if node.get_attribute("role").is_none() => {
-                        DescriptionNode::ItalicText(content)
+                        TextNode::ItalicText(content)
                     }
                     // TODO: implement this (html equivalent of <ul>, with <li> being <listitem>)
-                    "itemizedlist" | "simplelist" => DescriptionNode::Text(content),
+                    "itemizedlist" | "simplelist" => TextNode::Text(content),
                     // TODO: actually implement this (Like show full text on hover ?)
-                    "acronym" | "abbrev" => DescriptionNode::Text(content),
-                    "style.oop" | "style.procedural" => DescriptionNode::Subtitle(content),
-                    "note" => DescriptionNode::Note(content),
-                    "screen" => DescriptionNode::Inset(content),
-                    "tag" => DescriptionNode::HtmlTag(content),
-                    "php.ini" => DescriptionNode::InlineCode("php.ini".to_string()),
-                    "code" | "userinput" => DescriptionNode::InlinePhpCode(content),
-                    "quote" => DescriptionNode::ItalicText(format!(r#""{content}""#)),
-                    "superscript" => DescriptionNode::ItalicText(format!("^{content}")),
+                    "acronym" | "abbrev" => TextNode::Text(content),
+                    "style.oop" | "style.procedural" => TextNode::Subtitle(content),
+                    "note" => TextNode::Note(content),
+                    "screen" => TextNode::Inset(content),
+                    "tag" => TextNode::HtmlTag(content),
+                    "php.ini" => TextNode::InlineCode("php.ini".to_string()),
+                    "code" | "userinput" => TextNode::InlinePhpCode(content),
+                    "quote" => TextNode::ItalicText(format!(r#""{content}""#)),
+                    "superscript" => TextNode::ItalicText(format!("^{content}")),
                     // TODO: Find a solution one day maybe ? No clue if possible though
-                    "subscript" => DescriptionNode::ItalicText(format!("⋁{content}")),
-                    "warn.undocumented.func" => DescriptionNode::Warning(
+                    "subscript" => TextNode::ItalicText(format!("⋁{content}")),
+                    "warn.undocumented.func" => TextNode::Warning(
                         "This function is currently not documented; only its argument list is available.".to_string()
                     ),
                     // TODO: Handle correctly :pray:
                     // Example at doc-en/reference/stream/functions/stream-context-set-option.xml
-                    "methodsynopsis" => DescriptionNode::None,
-                    _ if node.get_type() == Some(NodeType::EntityRefNode) => {DescriptionNode::None},
+                    "methodsynopsis" => TextNode::None,
+                    _ if node.get_type() == Some(NodeType::EntityRefNode) => {TextNode::None},
 
                     name => todo!("Unhandled text node {name}"),
                 };
@@ -226,41 +228,48 @@ impl XmlParser {
             description
         };
 
-        Ok(Function::Definition(FunctionDefinition {
+        let function = FunctionDefinition {
             name: title,
             short_description,
             return_type,
             arguments: function_params,
             description,
-        }))
+        };
+
+        tracing::info!("Parsed function {:?}", &function);
+
+        Ok(Function::Definition(function))
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::parser::XmlParser;
+    use std::path::PathBuf;
 
-    #[tokio::test]
-    pub async fn smoke_test_function_parsing() -> Result<(), Box<dyn std::error::Error>> {
+    use super::XmlParser;
+
+    async fn do_test(file: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
         let parser = XmlParser::default();
-        for file in glob::glob("./.data/**/functions/**/*.xml")? {
-            let file = file?;
-            println!("Parsing file {}", &file.to_string_lossy());
-            let function = parser.parse_function(tokio::fs::read(file).await?)?;
-            println!("{function}");
-        }
+        let function = parser.parse_function(tokio::fs::read(&file).await?)?;
+        let name = file
+            .components()
+            .map(|component| component.as_os_str().to_str().unwrap_or_default())
+            .skip_while(|component| *component != ".data")
+            .collect::<Vec<_>>()
+            .join("_");
+
+        insta::assert_snapshot!(name, format!("{function:#?}"));
 
         Ok(())
     }
 
+    #[rstest::rstest]
     #[tokio::test]
-    pub async fn test_alias_function_definition() -> Result<(), Box<dyn std::error::Error>> {
-        let parser = XmlParser::default();
-        let key_exists_definition =
-            tokio::fs::read("./.data/doc-en/reference/array/functions/key-exists.xml").await?;
-        let function = parser.parse_function(key_exists_definition)?;
-        println!("{function}");
-
-        Ok(())
+    pub async fn smoke_test_function_parsing(
+        #[include_dot_files]
+        #[files(".data/**/functions/**/*.xml")]
+        file: PathBuf,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        do_test(file).await
     }
 }

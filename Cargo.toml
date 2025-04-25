@@ -8,6 +8,10 @@ authors = ["Zuruuh <zuruh.dev@proton.me>"]
 keywords = ["php", "tui"]
 repository = "https://github.com/Zuruuh/php-docbook"
 
+[workspace]
+resolver = "2"
+members = ["parser"]
+
 [dependencies]
 ansi-to-tui = "7.0.0"
 anstyle = "1.0.10"
@@ -24,20 +28,20 @@ futures-util = "0.3.31"
 fuzzy-matcher = "0.3.7"
 glob = "0.3.2"
 indoc = "2.0.6"
-jiff = { version = "0.2.6", default-features = false, features = [
-  "alloc",
-  "std",
-] }
-libxml = "0.3.3"
+php-docbook-parser = { version = "*", path = "./parser/" }
 ratatui = "0.29.0"
 serde = { version = "1.0.219", features = ["derive"] }
-thiserror = "2.0.12"
 tokio = { version = "1.44.2", features = [
   "macros",
   "fs",
   "rt-multi-thread",
   "time",
 ] }
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
 tui-input = { rev = "6198c80de72610c852948bd9b4dbc97687244cea", git = "https://github.com/Zuruuh/tui-input.git", features = [
   "crossterm",
 ] }
+
+[profile.dev.package]
+insta.opt-level = 3
