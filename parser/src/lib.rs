@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use function::{Function, FunctionDefinition};
 use libxml::{parser::XmlParseError, tree::NodeType};
 use text::TextNode;
@@ -147,26 +149,33 @@ impl XmlParser {
         };
 
         let description = {
-            let description_node = xpath
+            let mut description_nodes = xpath
                 .evaluate(r#"/d:refentry/d:refsect1[@role="description"]/d:para"#)
-                .map(|node| node.get_nodes_as_vec().into_iter().next())
-                .unwrap_or_default()
-                .or_else(|| {
-                    xpath
-                        .evaluate(r#"/d:refentry/d:refsect1[@role="description"]/d:simpara"#)
-                        .map(|node| node.get_nodes_as_vec().into_iter().next())
-                        .unwrap_or_default()
-                });
+                .map(|node| node.get_nodes_as_vec())
+                .unwrap_or_default();
+
+            if description_nodes.is_empty() {
+                let mut simparagraphs = xpath
+                    .evaluate(r#"/d:refentry/d:refsect1[@role="description"]/d:simpara"#)
+                    .map(|node| node.get_nodes_as_vec())
+                    .unwrap_or_default();
+
+                description_nodes.append(&mut simparagraphs);
+            }
 
             let mut description = Vec::<TextNode>::new();
 
-            for node in description_node
-                .map(|node| node.get_child_nodes())
-                .unwrap_or_default()
+            for node in description_nodes
+                .into_iter()
+                .flat_map(|node| node.get_child_nodes())
             {
                 let content = node.get_content();
                 let text_node = match node.get_name().as_str() {
-                    "text" => TextNode::Text(content),
+                    "text" => if content.chars().all(|char| char.is_whitespace()) {
+                        TextNode::None
+                    } else {
+                        TextNode::Text(content.split_whitespace().collect::<Vec<_>>().join(" "))
+                    },
                     "function" => TextNode::Function(content),
                     "constant" => TextNode::Constant(content),
                     "parameter" | "varname" => TextNode::Parameter(content),
@@ -188,7 +197,7 @@ impl XmlParser {
                     "emphasis"
                         if node
                             .get_attribute("role")
-                            .map(|role| &role == "bold")
+                            .map(|role| &role == "bold" || &role == "strong")
                             .unwrap_or_default() =>
                     {
                         TextNode::BoldText(content)
@@ -219,10 +228,12 @@ impl XmlParser {
                     "methodsynopsis" => TextNode::None,
                     _ if node.get_type() == Some(NodeType::EntityRefNode) => {TextNode::None},
 
-                    name => todo!("Unhandled text node {name}"),
+                    name => todo!("Unhandled text node {name}, {:?}", node.get_attributes()),
                 };
 
-                description.push(text_node);
+                if !matches!(text_node, TextNode::None) {
+                    description.push(text_node);
+                }
             }
 
             description
@@ -265,11 +276,12 @@ mod test {
 
     #[rstest::rstest]
     #[tokio::test]
-    pub async fn smoke_test_function_parsing(
-        #[include_dot_files]
-        #[files(".data/**/functions/**/*.xml")]
-        file: PathBuf,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        do_test(file).await
+    pub async fn smoke_test_function_parsing() -> Result<(), Box<dyn std::error::Error>> {
+        for file in glob::glob("../.data/**/functions/**/*.xml")? {
+            let file = file?;
+            do_test(file).await?
+        }
+
+        Ok(())
     }
 }

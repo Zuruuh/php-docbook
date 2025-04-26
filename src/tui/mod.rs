@@ -11,7 +11,7 @@ pub mod event;
 pub mod modal;
 pub mod screen;
 
-use crate::parser::function::Function;
+use php_docbook_parser::function::Function;
 
 #[derive(Default)]
 pub struct TerminalState {

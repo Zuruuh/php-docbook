@@ -12,10 +12,8 @@ use ratatui::{
 };
 use tui_input::Input;
 
-use crate::{
-    parser::function::Function,
-    tui::{EventHandler, EventHandlerResult, SharedState},
-};
+use crate::tui::{EventHandler, EventHandlerResult, SharedState};
+use php_docbook_parser::function::Function;
 
 use super::Modal;
 

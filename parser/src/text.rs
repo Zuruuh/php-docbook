@@ -12,6 +12,7 @@ pub enum TextNode {
     Subtitle(String),
     Function(String),
     Constant(String),
+    #[display("${_0}")]
     Parameter(String),
     Classname(String),
     InterfaceName(String),
