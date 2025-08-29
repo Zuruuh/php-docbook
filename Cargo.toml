@@ -38,7 +38,7 @@ tokio = { version = "1.44.2", features = [
   "time",
 ] }
 tracing = "0.1.41"
-tracing-subscriber = "0.3.19"
+tracing-subscriber = "0.3.20"
 tui-input = { rev = "6198c80de72610c852948bd9b4dbc97687244cea", git = "https://github.com/Zuruuh/tui-input.git", features = [
   "crossterm",
 ] }
